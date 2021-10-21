@@ -804,6 +804,13 @@ struct kvm_vcpu_arch {
 		 */
 		bool enforce;
 	} pv_cpuid;
+
+#ifdef CONFIG_KVM_NYX
+	bool page_dump_bp;
+	u64 page_dump_bp_cr3;
+	bool mtf;
+	bool mtf_on;
+#endif
 };
 
 struct kvm_lpage_info {
@@ -1013,6 +1020,12 @@ struct kvm_arch {
 	struct list_head tdp_mmu_roots;
 	/* List of struct tdp_mmu_pages not being used as roots */
 	struct list_head tdp_mmu_pages;
+
+#ifdef CONFIG_KVM_NYX
+	void* fdl_opaque; 
+	uint64_t printk_addr;
+#endif
+
 };
 
 struct kvm_vm_stat {
@@ -1282,6 +1295,13 @@ struct kvm_x86_ops {
 
 	void (*migrate_timers)(struct kvm_vcpu *vcpu);
 	void (*msr_filter_changed)(struct kvm_vcpu *vcpu);
+
+#ifdef CONFIG_KVM_NYX
+	int (*setup_trace_fd)(struct kvm_vcpu *vcpu);
+	int (*vmx_pt_enabled)(void);
+	int (*get_addrn)(void);
+#endif
+
 };
 
 struct kvm_x86_nested_ops {

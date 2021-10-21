@@ -60,6 +60,10 @@
 #include "async_pf.h"
 #include "vfio.h"
 
+#ifdef CONFIG_KVM_NYX
+#include "vmx/vmx_fdl.h"
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/kvm.h>
 
@@ -2477,6 +2481,10 @@ int kvm_write_guest_page(struct kvm *kvm, gfn_t gfn,
 {
 	struct kvm_memory_slot *slot = gfn_to_memslot(kvm, gfn);
 
+#ifdef CONFIG_KVM_NYX
+	vmx_fdl_set_addr_kvm(kvm, (gfn<<12));
+#endif
+
 	return __kvm_write_guest_page(slot, gfn, data, offset, len);
 }
 EXPORT_SYMBOL_GPL(kvm_write_guest_page);
@@ -2485,6 +2493,10 @@ int kvm_vcpu_write_guest_page(struct kvm_vcpu *vcpu, gfn_t gfn,
 			      const void *data, int offset, int len)
 {
 	struct kvm_memory_slot *slot = kvm_vcpu_gfn_to_memslot(vcpu, gfn);
+
+#ifdef CONFIG_KVM_NYX
+	vmx_fdl_set_addr_vpcu(vcpu, (gfn<<12));
+#endif
 
 	return __kvm_write_guest_page(slot, gfn, data, offset, len);
 }
@@ -2605,6 +2617,9 @@ int kvm_write_guest_offset_cached(struct kvm *kvm, struct gfn_to_hva_cache *ghc,
 	r = __copy_to_user((void __user *)ghc->hva + offset, data, len);
 	if (r)
 		return -EFAULT;
+#ifdef CONFIG_KVM_NYX
+	vmx_fdl_set_addr_kvm(kvm, gpa);
+#endif
 	mark_page_dirty_in_slot(ghc->memslot, gpa >> PAGE_SHIFT);
 
 	return 0;
@@ -2614,6 +2629,10 @@ EXPORT_SYMBOL_GPL(kvm_write_guest_offset_cached);
 int kvm_write_guest_cached(struct kvm *kvm, struct gfn_to_hva_cache *ghc,
 			   void *data, unsigned long len)
 {
+#ifdef CONFIG_KVM_NYX
+	vmx_fdl_set_addr_kvm(kvm, ghc->gpa);
+#endif
+
 	return kvm_write_guest_offset_cached(kvm, ghc, data, 0, len);
 }
 EXPORT_SYMBOL_GPL(kvm_write_guest_cached);
@@ -2695,6 +2714,10 @@ void mark_page_dirty(struct kvm *kvm, gfn_t gfn)
 {
 	struct kvm_memory_slot *memslot;
 
+#ifdef CONFIG_KVM_NYX
+	vmx_fdl_set_addr_kvm(kvm, (gfn<<12));
+#endif
+
 	memslot = gfn_to_memslot(kvm, gfn);
 	mark_page_dirty_in_slot(memslot, gfn);
 }
@@ -2703,6 +2726,10 @@ EXPORT_SYMBOL_GPL(mark_page_dirty);
 void kvm_vcpu_mark_page_dirty(struct kvm_vcpu *vcpu, gfn_t gfn)
 {
 	struct kvm_memory_slot *memslot;
+
+#ifdef CONFIG_KVM_NYX
+	vmx_fdl_set_addr_vpcu(vcpu, (gfn<<12));
+#endif
 
 	memslot = kvm_vcpu_gfn_to_memslot(vcpu, gfn);
 	mark_page_dirty_in_slot(memslot, gfn);

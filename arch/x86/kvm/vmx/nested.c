@@ -4564,6 +4564,11 @@ void nested_vmx_vmexit(struct kvm_vcpu *vcpu, u32 vm_exit_reason,
 
 		load_vmcs12_host_state(vcpu, vmcs12);
 
+	#ifdef CONFIG_KVM_NYX
+			/* required for Hypertrash redqueen */ 
+		update_exception_bitmap(vcpu);
+	#endif
+
 		return;
 	}
 
@@ -4816,10 +4821,12 @@ static int enter_vmx_operation(struct kvm_vcpu *vcpu)
 	vmx->nested.vmcs02_initialized = false;
 	vmx->nested.vmxon = true;
 
+#ifndef CONFIG_KVM_NYX
 	if (vmx_pt_mode_is_host_guest()) {
 		vmx->pt_desc.guest.ctl = 0;
 		pt_update_intercept_for_msr(vcpu);
 	}
+#endif
 
 	return 0;
 
@@ -5828,6 +5835,64 @@ static bool nested_vmx_l0_wants_exit(struct kvm_vcpu *vcpu,
 	return false;
 }
 
+#ifdef CONFIG_KVM_NYX
+u64 g2va_to_g1pa(struct kvm_vcpu *vcpu, struct vmcs12* vmcs12, u64 addr){
+
+	u64 gfn = 0;
+	u64 real_gfn = 0;
+
+	/* Guest Level 1 VMM is not using EPT and no virtual memory */
+	if(!nested_cpu_has_ept(vmcs12)){
+		//printk("Non-EPT-Mode\n");
+		gfn = vcpu->arch.mmu->gva_to_gpa(vcpu, addr, 0, NULL) >> 12;
+	}
+
+	/* Guest Level 1 VMM *is* using EPT and no virtual memory */
+	else {
+		//printk("EPT-Mode\n");
+		gfn = addr >> 12;
+	}
+
+	//u8 data[8];
+	//r = kvm_read_guest_page_mmu(vcpu, vcpu->arch.walk_mmu, gfn, data, 0, 8, 0);
+	//printk("Data:\t%lx\t%x %x %x %x (Status: %lx)\n", guest_level_2_data_addr, data[0], data[1], data[2], data[3], r);
+	real_gfn = (u64)(vcpu->arch.walk_mmu->translate_gpa(vcpu, ((u64)gfn) << 12, 0, NULL));
+
+	return real_gfn;
+}
+
+void prepare_nested(struct kvm_vcpu *vcpu, struct vmcs12* vmcs12){
+	u64 guest_level_2_data_addr = kvm_register_read(vcpu, VCPU_REGS_RCX) & 0xFFFFFFFFFFFFFFFF;
+	//printk(KERN_EMERG "HyperCall from Guest Level 2! RIP: %lx (created_vcpus: %x): %llx\n", kvm_register_read(vcpu, VCPU_REGS_RIP), vcpu->kvm->last_boosted_vcpu, guest_level_2_data_addr);
+	
+	u64 address = guest_level_2_data_addr & 0xFFFFFFFFFFFFF000ULL;
+	u16 num = guest_level_2_data_addr & 0xFFF;
+	u16 i = 0;
+
+	u64 old_address;
+	u64 new_address;
+
+	//printk("ADDRESS: %lx (num: %d)\n", address, num);
+	u64 page_address_gfn = g2va_to_g1pa(vcpu, vmcs12, address) >> 12;
+
+
+	for(i = 0; i < num; i++){
+		kvm_vcpu_read_guest_page(vcpu, page_address_gfn,  &old_address, (i*0x8), 8);
+		//printk("READ -> %lx\n", old_address);
+		new_address = g2va_to_g1pa(vcpu, vmcs12, old_address);
+		kvm_vcpu_write_guest_page(vcpu, page_address_gfn,  &new_address, (i*0x8), 8);
+		//printk("%d: %lx -> %lx\n", i, old_address, new_address);
+	}
+	
+	vcpu->run->exit_reason = KVM_EXIT_KAFL_NESTED_PREPARE;
+	//vcpu->run->hypercall.args[0] = 0;
+	
+	vcpu->run->hypercall.args[0] = num;
+	vcpu->run->hypercall.args[1] = page_address_gfn << 12; 
+	vcpu->run->hypercall.args[2] = vmcs12->host_cr3 & 0xFFFFFFFFFFFFF000;
+}
+#endif
+
 /*
  * Return 1 if L1 wants to intercept an exit from L2.  Only call this when in
  * is_guest_mode (L2).
@@ -5879,7 +5944,44 @@ static bool nested_vmx_l1_wants_exit(struct kvm_vcpu *vcpu,
 	case EXIT_REASON_VMWRITE:
 		return nested_vmx_exit_handled_vmcs_access(vcpu, vmcs12,
 			vmcs12->vmwrite_bitmap);
+#ifndef CONFIG_KVM_NYX
 	case EXIT_REASON_VMCALL: case EXIT_REASON_VMCLEAR:
+#else
+	case EXIT_REASON_VMCALL: 
+		if ((kvm_register_read(vcpu, VCPU_REGS_RAX)&0xFFFFFFFF) == HYPERCALL_KAFL_RAX_ID && (kvm_register_read(vcpu, VCPU_REGS_RBX)&0xFF000000) == HYPERTRASH_HYPERCALL_MASK){
+			switch(kvm_register_read(vcpu, VCPU_REGS_RBX)){
+
+				case HYPERCALL_KAFL_NESTED_CONFIG:
+					vcpu->run->exit_reason = KVM_EXIT_KAFL_NESTED_CONFIG;
+					break;
+
+				case HYPERCALL_KAFL_NESTED_PREPARE:
+					prepare_nested(vcpu, vmcs12);
+					break;
+
+				case HYPERCALL_KAFL_NESTED_ACQUIRE:
+					vcpu->run->exit_reason = KVM_EXIT_KAFL_NESTED_ACQUIRE;
+					break;
+
+				case HYPERCALL_KAFL_NESTED_RELEASE:
+					vcpu->run->exit_reason = KVM_EXIT_KAFL_NESTED_RELEASE;
+					break;
+
+				case HYPERCALL_KAFL_NESTED_HPRINTF:
+					vcpu->run->exit_reason = KVM_EXIT_KAFL_NESTED_HPRINTF;
+					//printk("HYPERCALL_KAFL_NESTED_HPRINTF %lx %llx\n", kvm_register_read(vcpu, VCPU_REGS_RCX), g2va_to_g1pa(vcpu, vmcs12, (kvm_register_read(vcpu, VCPU_REGS_RCX) & 0xFFFFFFFFFFFFF000)));
+					vcpu->run->hypercall.args[0] = (g2va_to_g1pa(vcpu, vmcs12, (kvm_register_read(vcpu, VCPU_REGS_RCX) & 0xFFFFFFFFFFFFF000)));// << 12) & (kvm_register_read(vcpu, VCPU_REGS_RCX)&0xFFF);
+					break;
+
+				case HYPERCALL_KAFL_NESTED_EARLY_RELEASE:
+					vcpu->run->exit_reason = KVM_EXIT_KAFL_NESTED_EARLY_RELEASE;
+					break;
+			}
+		}
+
+		return true; 
+	case EXIT_REASON_VMCLEAR:
+#endif
 	case EXIT_REASON_VMLAUNCH: case EXIT_REASON_VMPTRLD:
 	case EXIT_REASON_VMPTRST: case EXIT_REASON_VMRESUME:
 	case EXIT_REASON_VMOFF: case EXIT_REASON_VMON:
@@ -5986,6 +6088,7 @@ bool nested_vmx_reflect_vmexit(struct kvm_vcpu *vcpu)
 	if (!nested_vmx_l1_wants_exit(vcpu, exit_reason))
 		return false;
 
+#ifndef CONFIG_KVM_NYX
 	/*
 	 * vmcs.VM_EXIT_INTR_INFO is only valid for EXCEPTION_NMI exits.  For
 	 * EXTERNAL_INTERRUPT, the value for vmcs12->vm_exit_intr_info would
@@ -6004,7 +6107,38 @@ bool nested_vmx_reflect_vmexit(struct kvm_vcpu *vcpu)
 reflect_vmexit:
 	nested_vmx_vmexit(vcpu, exit_reason.full, exit_intr_info, exit_qual);
 	return true;
+#else
+reflect_vmexit:
+	return true;
+#endif
 }
+
+#ifdef CONFIG_KVM_NYX
+bool perform_nested_vmx_reflect_vmexit(struct kvm_vcpu *vcpu){
+	struct vcpu_vmx *vmx = to_vmx(vcpu);
+	u32 exit_intr_info;
+	unsigned long exit_qual;
+	union vmx_exit_reason exit_reason = vmx->exit_reason;
+
+	/*
+	 * vmcs.VM_EXIT_INTR_INFO is only valid for EXCEPTION_NMI exits.  For
+	 * EXTERNAL_INTERRUPT, the value for vmcs12->vm_exit_intr_info would
+	 * need to be synthesized by querying the in-kernel LAPIC, but external
+	 * interrupts are never reflected to L1 so it's a non-issue.
+	 */
+	exit_intr_info = vmx_get_intr_info(vcpu);
+	if (is_exception_with_error_code(exit_intr_info)) {
+		struct vmcs12 *vmcs12 = get_vmcs12(vcpu);
+
+		vmcs12->vm_exit_intr_error_code =
+			vmcs_read32(VM_EXIT_INTR_ERROR_CODE);
+	}
+	exit_qual = vmx_get_exit_qual(vcpu);
+
+	nested_vmx_vmexit(vcpu, exit_reason.full, exit_intr_info, exit_qual);
+	return true;
+}
+#endif
 
 static int vmx_get_nested_state(struct kvm_vcpu *vcpu,
 				struct kvm_nested_state __user *user_kvm_nested_state,

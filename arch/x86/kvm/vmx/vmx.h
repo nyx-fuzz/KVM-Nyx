@@ -205,6 +205,13 @@ struct vcpu_vmx {
 	u8                    fail;
 	u8		      msr_bitmap_mode;
 
+#ifdef CONFIG_KVM_NYX
+	struct vcpu_vmx_pt*   vmx_pt_config;
+	uint8_t				cr3_target_control_count;
+	uint8_t				cr3_target_control_slot;
+	uint64_t			cr3_target_control[4];
+#endif
+
 	/*
 	 * If true, host state has been stored in vmx->loaded_vmcs for
 	 * the CPU registers that only need to be switched when transitioning
@@ -514,5 +521,10 @@ static inline bool vmx_guest_state_valid(struct kvm_vcpu *vcpu)
 }
 
 void dump_vmcs(void);
+
+#ifdef CONFIG_KVM_NYX
+void add_atomic_switch_msr(struct vcpu_vmx *vmx, unsigned msr,
+				  u64 guest_val, u64 host_val, bool entry_only);
+#endif
 
 #endif /* __KVM_X86_VMX_H */

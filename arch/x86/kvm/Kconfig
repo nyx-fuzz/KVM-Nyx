@@ -84,6 +84,12 @@ config KVM_INTEL
 	  To compile this as a module, choose M here: the module
 	  will be called kvm-intel.
 
+config KVM_NYX
+ 	bool "KVM extension for NYX to enable advanced fuzzing features (such as Intel Processor Trace)"
+ 	depends on KVM && KVM_INTEL
+ 	help
+   Enables advanced NYX features (such as Intel Processor Trace in vmx mode, nested fuzzing and MTF page dump).
+
 config KVM_AMD
 	tristate "KVM for AMD processors support"
 	depends on KVM

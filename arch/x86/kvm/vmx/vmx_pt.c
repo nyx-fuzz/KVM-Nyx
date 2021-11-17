@@ -91,8 +91,8 @@
 #define TOPA_SIZE_SHIFT 				6
 
 #define NMI_HANDLER 					"pt_topa_pmi_handler_kafl"
-#define PRINT_INFO(msg)					printk(KERN_INFO "[KVM-PT] Info:\t%s\n",  (msg))
-#define PRINT_ERROR(msg)				printk(KERN_INFO "[KVM-PT] Error:\t%s\n", (msg))
+#define PRINT_INFO(msg)					printk(KERN_INFO "[KVM-NYX] Info:\t%s\n",  (msg))
+#define PRINT_ERROR(msg)				printk(KERN_INFO "[KVM-NYX] Error:\t%s\n", (msg))
 
 
 #define TOPA_MAIN_ORDER					10	/*  1MB */

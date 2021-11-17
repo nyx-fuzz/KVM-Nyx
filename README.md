@@ -11,6 +11,11 @@ You can find more detailed information in our main repository.
 
 ## Setup (Out-of-Tree)
 
+```
+git clone --depth 1 --branch kvm-nyx-5.10.73 git@github.com:nyx-fuzz/kvm-nyx.git
+cd kvm-nyx
+```
+
 You can compile and install KVM-Nyx by using one of Ubuntu`s pre-compiled mainline kernels. To do so, you need to install the following packages (Ubuntu 21-04 only):
 
 ```

@@ -86,7 +86,7 @@ git clone --depth 1 --branch kvm-nyx-5.10.73 git@github.com:nyx-fuzz/kvm-nyx.git
 cd kvm-nyx
 ```
 
-Prepare a kernel config (e.g. by running `make oldconfig`) and add the following option to the config (".config") before compile the kernel and its modules: 
+Prepare a kernel config (e.g. by running `make oldconfig`) and add the following option to the config (`.config`) before compile the kernel and its modules: 
 
 ```
 CONFIG_KVM_NYX=y

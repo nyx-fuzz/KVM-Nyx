@@ -22,17 +22,17 @@ First, install the Ubuntu kernel image and its modules (headers are not necessar
 
 ```
 cd /tmp/ &&
-wget -c  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.73/amd64/linux-image-unsigned-5.10.73-051073-generic_5.10.73-051073.202110131013_amd64.deb &&
-wget -c  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.73/amd64/linux-modules-5.10.73-051073-generic_5.10.73-051073.202110131013_amd64.deb &&
+wget -c https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.75/amd64/linux-image-unsigned-5.10.75-051075-generic_5.10.75-051075.202110201038_amd64.deb &&
+wget -c https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.75/amd64/linux-modules-5.10.75-051075-generic_5.10.75-051075.202110201038_amd64.deb &&
 sudo dpkg -i *.deb
 sudo reboot
 ```
 
-Next, make sure you have booted the Ubuntu kernel (run `uname -a` and check that the kernel version is `5.10.73-051073-generic`). Download our KVM-Nyx module binaries (check the [release section](https://github.com/nyx-fuzz/KVM-Nyx/releases)), extract the modules and move into the output directory. Finally, run the following command to load the modules:
+Next, make sure you have booted the Ubuntu kernel (run `uname -a` and check that the kernel version is `5.10.75-051075-generic`). Download our KVM-Nyx module binaries (check the [release section](https://github.com/nyx-fuzz/KVM-Nyx/releases)), extract the modules and move into the output directory. Finally, run the following command to load the modules:
 
 ```
-unzip kvm-nyx-5.10.73-1.0.zip
-cd kvm-nyx-5.10.73-1.0
+unzip kvm-nyx-5.10.73-1.1.zip
+cd kvm-nyx-5.10.73-1.1
 sudo rmmod kvm_intel kvm
 sudo insmod ./kvm.ko;
 sudo insmod ./kvm-intel.ko;
@@ -48,15 +48,15 @@ First, install the Ubuntu kernel image, its modules and all headers:
 
 ```
 cd /tmp/ &&
-wget -c  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.73/amd64/linux-headers-5.10.73-051073-generic_5.10.73-051073.202110131013_amd64.deb &&
-wget -c  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.73/amd64/linux-headers-5.10.73-051073_5.10.73-051073.202110131013_all.deb &&
-wget -c  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.73/amd64/linux-image-unsigned-5.10.73-051073-generic_5.10.73-051073.202110131013_amd64.deb &&
-wget -c  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.73/amd64/linux-modules-5.10.73-051073-generic_5.10.73-051073.202110131013_amd64.deb &&
+wget -c https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.75/amd64/linux-headers-5.10.75-051075-generic_5.10.75-051075.202110201038_amd64.deb &&
+wget -c https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.75/amd64/linux-headers-5.10.75-051075_5.10.75-051075.202110201038_all.deb &&
+wget -c https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.75/amd64/linux-image-unsigned-5.10.75-051075-generic_5.10.75-051075.202110201038_amd64.deb &&
+wget -c https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.10.75/amd64/linux-modules-5.10.75-051075-generic_5.10.75-051075.202110201038_amd64.deb &&
 sudo dpkg -i *.deb
 sudo reboot
 ```
 
-Make sure you have booted the Ubuntu kernel (run `uname -a` and check that the kernel version is `5.10.73-051073-generic`). Next, check out this repository by running the following command:
+Make sure you have booted the Ubuntu kernel (run `uname -a` and check that the kernel version is `5.10.75-051075-generic`). Next, check out this repository by running the following command:
 
 ```
 git clone --depth 1 --branch kvm-nyx-5.10.73 git@github.com:nyx-fuzz/kvm-nyx.git

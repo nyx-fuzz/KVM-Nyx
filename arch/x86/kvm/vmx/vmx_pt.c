@@ -239,6 +239,10 @@ static int vmx_pt_mmap(struct file *filp, struct vm_area_struct *vma)
 {	
 	struct vcpu_vmx_pt *vmx_pt_config = filp->private_data;
 	
+	if (!vmx_pt_config->topa_main_buf_virt_addr) {
+		return -ENOMEM;
+	}
+
 	/* refrence http://www.makelinux.net/books/lkd2/ch14lev1sec2 */                                     	
 	if ((vma->vm_end-vma->vm_start) > (TOPA_MAIN_SIZE+TOPA_FALLBACK_SIZE)){
 		return -EINVAL;
@@ -555,7 +559,11 @@ static long vmx_pt_ioctl(struct file *filp, unsigned int ioctl, unsigned long ar
 			}
 			break;
 		case KVM_VMX_PT_GET_TOPA_SIZE:
-			r = (TOPA_MAIN_SIZE + TOPA_FALLBACK_SIZE);
+			if (vmx_pt_config->topa_main_buf_virt_addr) {
+				r = (TOPA_MAIN_SIZE + TOPA_FALLBACK_SIZE);
+			} else {
+				r = -ENOMEM;
+			}
 			break;
 	}
 	spin_unlock(&vmx_pt_config->spinlock);
@@ -827,6 +835,8 @@ static int vmx_pt_setup_topa(struct vcpu_vmx_pt *vmx_pt)
 		free_pages(fallback_buffer, TOPA_FALLBACK_ORDER);
 	free_topa_buffer1:
 		free_pages(main_buffer, TOPA_MAIN_ORDER);
+
+	vmx_pt->topa_main_buf_virt_addr = NULL;
 	return -ENOMEM;
 }
  

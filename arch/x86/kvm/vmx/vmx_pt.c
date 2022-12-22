@@ -778,19 +778,19 @@ static int vmx_pt_setup_topa(struct vcpu_vmx_pt *vmx_pt)
 	u64 *topa;
 	int n;
 		
-	main_buffer = __get_free_pages(GFP_KERNEL|__GFP_NOWARN|__GFP_ZERO, TOPA_MAIN_ORDER);
+	main_buffer = __get_free_pages(GFP_KERNEL|__GFP_RETRY_MAYFAIL|__GFP_ZERO, TOPA_MAIN_ORDER);
 	if (!main_buffer) {
 		PRINT_ERROR("Cannot allocate main ToPA buffer!");
 		return -ENOMEM;
 	}	
 	
-	fallback_buffer = __get_free_pages(GFP_KERNEL|__GFP_NOWARN|__GFP_ZERO, TOPA_FALLBACK_ORDER);
+	fallback_buffer = __get_free_pages(GFP_KERNEL|__GFP_RETRY_MAYFAIL|__GFP_ZERO, TOPA_FALLBACK_ORDER);
 	if (!fallback_buffer) {
 		PRINT_ERROR("Cannot allocate fallback ToPA buffer!");
 		goto free_topa_buffer1;
 	}
 
-	topa = (u64 *)__get_free_page(GFP_KERNEL|__GFP_ZERO);
+	topa = (u64 *)__get_free_page(GFP_KERNEL|__GFP_RETRY_MAYFAIL|__GFP_ZERO);
 	if (!topa) {
 		PRINT_ERROR("Cannot allocate ToPA table!");
 		goto free_topa_buffer2;
